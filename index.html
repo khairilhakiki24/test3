@@ -139,7 +139,6 @@
         </div>
 
         <!-- CONTENT AREA (Scrollable) -->
-        <!-- DIPERBARUI: pb-[130px] memberikan ruang lapang di bagian bawah sehingga tidak tertutup navigasi mobile -->
         <div id="content-area" class="flex-1 overflow-y-auto px-5 pt-5 pb-[130px] md:p-10 w-full max-w-5xl mx-auto scroll-smooth">
             
             <!-- SECTION: GENERATE -->
@@ -351,9 +350,10 @@
                         <div class="space-y-5">
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nama Brand Aplikasi</label>
-                                <div class="flex gap-2">
-                                    <input type="text" id="setting-app-name" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white">
-                                    <button onclick="saveAppName()" class="bg-primary text-white px-4 py-2.5 rounded-xl font-medium btn-press">Simpan</button>
+                                <!-- PENGUBAHAN: flex-col sm:flex-row agar tombol simpan turun ke bawah pada mobile -->
+                                <div class="flex flex-col sm:flex-row gap-3">
+                                    <input type="text" id="setting-app-name" class="w-full sm:flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white">
+                                    <button onclick="saveAppName()" class="w-full sm:w-auto bg-primary text-white px-6 py-3 rounded-xl font-medium btn-press shadow-glow sm:shadow-none">Simpan</button>
                                 </div>
                             </div>
                             
@@ -462,6 +462,24 @@
             <div class="flex gap-3">
                 <button onclick="closeDeleteModal()" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium btn-press hover:bg-slate-200 dark:hover:bg-slate-700">Batal</button>
                 <button id="btn-confirm-delete" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-medium btn-press shadow-glow shadow-red-500/30 hover:bg-red-700">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: RESET KONFIRMASI KUSTOM (Pengganti alert bawaan) -->
+    <div id="modal-reset" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" onclick="closeResetModal()"></div>
+        <!-- Content -->
+        <div class="bg-white dark:bg-darkSurface w-[90%] max-w-sm rounded-3xl p-6 relative z-10 animate-pop shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="alert-triangle" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-center text-slate-900 dark:text-white mb-2">Reset Aplikasi?</h3>
+            <p class="text-center text-slate-500 dark:text-slate-400 text-sm mb-6">Semua data QR Code akan dihapus secara permanen dan sistem akan kembali ke pengaturan awal. Lanjutkan?</p>
+            <div class="flex gap-3">
+                <button onclick="closeResetModal()" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium btn-press hover:bg-slate-200 dark:hover:bg-slate-700">Batal</button>
+                <button onclick="executeResetDB()" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-medium btn-press shadow-glow shadow-red-500/30 hover:bg-red-700">Ya, Reset</button>
             </div>
         </div>
     </div>
@@ -1325,19 +1343,31 @@
         }
 
         function confirmResetDB() {
-            if(confirm("PERINGATAN! Semua data QR Code akan dihapus secara permanen dan sistem akan kembali ke pengaturan awal. Lanjutkan?")) {
-                clearDB().then(() => {
-                    // Hapus localStorage termasuk tema dan warna
-                    localStorage.clear();
-                    
-                    // Kembalikan ke warna bawaan sebelum reload
-                    primaryColor = '#4F46E5';
-                    applyPrimaryColor(primaryColor);
-                    
-                    showToast("Sistem direset ke awal.");
-                    setTimeout(() => window.location.reload(), 1500);
-                }).catch(() => showToast("Gagal reset sistem.", "error"));
-            }
+            const modal = document.getElementById('modal-reset');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            lucide.createIcons();
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('modal-reset');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function executeResetDB() {
+            closeResetModal();
+            clearDB().then(() => {
+                // Hapus localStorage termasuk tema dan warna
+                localStorage.clear();
+                
+                // Kembalikan ke warna bawaan sebelum reload
+                primaryColor = '#4F46E5';
+                applyPrimaryColor(primaryColor);
+                
+                showToast("Sistem direset ke awal.");
+                setTimeout(() => window.location.reload(), 1500);
+            }).catch(() => showToast("Gagal reset sistem.", "error"));
         }
 
         // --- 11. PWA REGISTRATION ---
