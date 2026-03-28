@@ -42,8 +42,8 @@
         .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .dark .glass-panel { background: rgba(24, 34, 53, 0.7); border: 1px solid rgba(255,255,255,0.05); }
         
-        /* Safe Area Padding untuk mencegah UI tertutup di Mobile */
-        .pb-safe { padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); }
+        /* Safe Area Padding untuk Sheet Modal agar presisi dengan layar bawah */
+        .pb-safe { padding-bottom: max(24px, env(safe-area-inset-bottom)); }
         
         /* Utility untuk transisi bottom sheet */
         .bottom-sheet { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(100%); }
@@ -83,7 +83,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white transition-colors duration-300">
+<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-[100dvh] flex overflow-hidden selection:bg-primary selection:text-white transition-colors duration-300">
 
     <!-- 1. NOTIFIKASI TOAST -->
     <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
@@ -139,7 +139,8 @@
         </div>
 
         <!-- CONTENT AREA (Scrollable) -->
-        <div id="content-area" class="flex-1 overflow-y-auto pb-safe p-5 md:p-10 w-full max-w-5xl mx-auto scroll-smooth">
+        <!-- DIPERBARUI: pb-[130px] memberikan ruang lapang di bagian bawah sehingga tidak tertutup navigasi mobile -->
+        <div id="content-area" class="flex-1 overflow-y-auto px-5 pt-5 pb-[130px] md:p-10 w-full max-w-5xl mx-auto scroll-smooth">
             
             <!-- SECTION: GENERATE -->
             <section id="sec-generate" class="animate-fade-up">
@@ -886,7 +887,7 @@
 
             new QRious({
                 element: canvas,
-                value: value === "Bejaja Digital" ? "https://s.shopee.co.id/6VJRF7cyUi" : value, 
+                value: value === "QRMUAJA" ? "https://qrmuaja.com" : value, 
                 size: 300,
                 level: 'H', 
                 foreground: color || '#000000',
