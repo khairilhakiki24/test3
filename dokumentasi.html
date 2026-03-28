@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Book - QRMUAJA PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+
+    <div class="max-w-4xl mx-auto px-5 py-10">
+        
+        <header class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900 mb-4 tracking-tight">Dokumentasi <span class="text-indigo-600">QRMUAJA</span></h1>
+            <p class="text-lg text-slate-500">Panduan Lengkap Instalasi, Modifikasi, & Penggunaan Web App PWA 100% Offline</p>
+            <div class="mt-4 inline-block bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-sm font-semibold">Versi 1.1.0 - Scanner Edition</div>
+        </header>
+
+        <main class="space-y-12">
+            
+            <!-- SECTION 1 -->
+            <section class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <h2 class="text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4 mb-6 flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm">1</span> 
+                    Fitur Unggulan & Penggunaan
+                </h2>
+                <ul class="space-y-4 text-slate-600 list-none">
+                    <li class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <div><strong class="text-slate-800">100% Offline-First:</strong> Menggunakan Service Worker tingkat lanjut. Setelah dibuka pertama kali, aplikasi (termasuk scanner kamera) tetap bisa digunakan tanpa kuota internet.</div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <div><strong class="text-slate-800">Pemindai QR (Scanner) & Riwayat:</strong> Pindai QR code langsung dari kamera HP Anda. Hasil pindai (teks/URL/WiFi) otomatis disimpan ke "Riwayat Pindai" dan bisa dibagikan ulang kapan saja.</div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <div><strong class="text-slate-800">Kustomisasi Warna & Logo QR:</strong> Saat membuat QR, Anda bisa mengubah warna dasar barcode dan mengunggah gambar/logo untuk disisipkan di tengah QR. (Didukung fitur Error Correction Level H agar tetap bisa di-scan).</div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <div><strong class="text-slate-800">Ekspor/Cetak Sempurna & Quick Share:</strong> Hasil unduhan gambar QR dijamin tidak terpotong (Anti-Clipping). Tersedia tombol "Bagikan" (Quick Share) langsung dari halaman koleksi ke WhatsApp/Telegram.</div>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <svg class="w-6 h-6 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        <div><strong class="text-slate-800">State Persistence & Backup Excel:</strong> Ketikan Anda tak akan hilang walau web di-refresh (Auto-Save ke LocalStorage). Seluruh database bisa dicadangkan dan dipulihkan menggunakan file `.xlsx`.</div>
+                    </li>
+                </ul>
+            </section>
+
+            <!-- SECTION 2 -->
+            <section class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <h2 class="text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4 mb-6 flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm">2</span> 
+                    Panduan Instalasi PWA (Icon & Splash Screen)
+                </h2>
+                <p class="text-slate-600 mb-4">Agar aplikasi bisa di-install layaknya aplikasi Native (Android/iOS/PC), Anda WAJIB menyiapkan Icon Logo.</p>
+                <ol class="space-y-4 text-slate-600 list-decimal pl-5">
+                    <li>Buat folder baru bernama <code>assets</code> sejajar dengan file <code>index.html</code>.</li>
+                    <li>Siapkan logo aplikasi (background solid direkomendasikan).</li>
+                    <li>Resize logo tersebut menjadi 2 ukuran persis:
+                        <ul class="list-disc pl-5 mt-2 space-y-1 text-sm font-medium">
+                            <li><code>192x192</code> pixel. Simpan dengan nama <code class="bg-slate-100 px-2 py-1 rounded text-pink-600">icon-192x192.png</code></li>
+                            <li><code>512x512</code> pixel. Simpan dengan nama <code class="bg-slate-100 px-2 py-1 rounded text-pink-600">icon-512x512.png</code></li>
+                        </ul>
+                    </li>
+                    <li>Masukkan kedua gambar tersebut ke dalam folder <code>assets/</code>.</li>
+                    <li>Jika berhasil, saat Anda membuka web via HP (Chrome/Safari), akan muncul notifikasi "Tambahkan ke Layar Utama" (Add to Home Screen).</li>
+                </ol>
+            </section>
+
+            <!-- SECTION 3 -->
+            <section class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
+                <h2 class="text-2xl font-bold text-slate-900 border-b border-slate-100 pb-4 mb-6 flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-sm">3</span> 
+                    Panduan Hosting & Upload
+                </h2>
+                <p class="text-slate-600 mb-4">Aplikasi ini berbasis HTML statis, sehingga sangat mudah dan <strong>GRATIS</strong> untuk dihosting.</p>
+                
+                <h3 class="font-bold text-slate-800 mt-6 mb-2">Opsi 1: GitHub Pages (Gratis & Disarankan)</h3>
+                <ul class="space-y-2 text-slate-600 list-disc pl-5 text-sm">
+                    <li>Buat akun GitHub, lalu buat Repository baru.</li>
+                    <li>Upload keempat file tersebut (index.html, manifest.json, sw.js, folder assets).</li>
+                    <li>Masuk ke menu <strong>Settings > Pages</strong> di Repository tersebut.</li>
+                    <li>Pada opsi 'Branch', ubah dari 'None' ke 'main', lalu klik Save.</li>
+                    <li>Tunggu 1-2 menit, web Anda sudah live dan memiliki SSL HTTPS otomatis!</li>
+                </ul>
+
+                <h3 class="font-bold text-slate-800 mt-6 mb-2">Opsi 2: cPanel / Shared Hosting</h3>
+                <ul class="space-y-2 text-slate-600 list-disc pl-5 text-sm">
+                    <li>Login ke cPanel Hosting Anda. Buka <strong>File Manager</strong>.</li>
+                    <li>Buka folder <code>public_html</code> (atau folder subdomain Anda).</li>
+                    <li>Upload file <code>index.html</code>, <code>manifest.json</code>, <code>sw.js</code>, dan folder <code>assets</code>.</li>
+                    <li>Aplikasi siap diakses melalui domain Anda. Pastikan domain Anda menggunakan <strong>HTTPS</strong> agar Service Worker (PWA Offline) maupun <strong>Kamera Scanner</strong> dapat bekerja dengan baik.</li>
+                </ul>
+            </section>
+
+        </main>
+
+        <footer class="mt-20 text-center border-t border-slate-200 pt-8 pb-10">
+            <p class="text-slate-500 font-medium">© 2026 Bejaja Digital. Hak Cipta Dilindungi.</p>
+            <p class="text-sm text-slate-400 mt-2">Elite Full-Stack Engineered Web Application.</p>
+        </footer>
+
+    </div>
+
+</body>
+</html>

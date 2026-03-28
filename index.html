@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="id" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#4F46E5" id="meta-theme-color">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
+    <!-- EDUKASI: Letakkan file icon asli di folder assets/ untuk PWA -->
+    <link rel="apple-touch-icon" href="assets/icon-192x192.png">
+    
+    <title id="app-title-meta">QRMUAJA - Premium QR Generator</title>
+    
+    <style>
+        :root {
+            --color-primary: #4F46E5; /* Indigo 600 - Premium Default */
+            --color-primary-rgb: 79, 70, 229;
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        
+        /* Animasi & Interaksi */
+        .btn-press { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-press:active { transform: scale(0.96); }
+        @keyframes fadeSlideUp { 0% { opacity: 0; transform: translateY(15px); } 100% { opacity: 1; transform: translateY(0); } }
+        .animate-fade-up { animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        @keyframes slideInRight { 0% { opacity: 0; transform: translateX(20px); } 100% { opacity: 1; transform: translateX(0); } }
+        .animate-slide-right { animation: slideInRight 0.3s ease forwards; }
+
+        @keyframes popIn { 0% { opacity: 0; transform: scale(0.9); } 100% { opacity: 1; transform: scale(1); } }
+        .animate-pop { animation: popIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        
+        /* Glassmorphism */
+        .glass-nav { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid rgba(0,0,0,0.05); }
+        .dark .glass-nav { background: rgba(11, 17, 32, 0.85); border-top: 1px solid rgba(255,255,255,0.05); }
+        .glass-panel { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .dark .glass-panel { background: rgba(24, 34, 53, 0.7); border: 1px solid rgba(255,255,255,0.05); }
+        
+        /* Safe Area Padding untuk mencegah UI tertutup di Mobile */
+        .pb-safe { padding-bottom: calc(90px + env(safe-area-inset-bottom, 20px)); }
+        
+        /* Utility untuk transisi bottom sheet */
+        .bottom-sheet { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(100%); }
+        .bottom-sheet.open { transform: translateY(0); }
+        
+        .drag-handle { width: 40px; height: 5px; background-color: #cbd5e1; border-radius: 10px; margin: 8px auto; cursor: grab; }
+        .dark .drag-handle { background-color: #475569; }
+        .drag-handle:active { cursor: grabbing; }
+    </style>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--color-primary)', 
+                        primaryLight: 'color-mix(in srgb, var(--color-primary) 15%, transparent)',
+                        darkBg: '#0B1120',
+                        darkSurface: '#182235'
+                    },
+                    boxShadow: {
+                        'soft': '0 20px 40px -15px rgba(0,0,0,0.05)',
+                        'glow': '0 0 20px color-mix(in srgb, var(--color-primary) 40%, transparent)'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-darkBg dark:text-slate-200 font-sans h-screen flex overflow-hidden selection:bg-primary selection:text-white transition-colors duration-300">
+
+    <!-- 1. NOTIFIKASI TOAST -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- 2. SIDEBAR DESKTOP -->
+    <aside class="hidden md:flex flex-col w-72 bg-white dark:bg-darkSurface border-r border-slate-200 dark:border-slate-800 shadow-soft z-20">
+        <div class="p-6 flex items-center gap-3 border-b border-slate-100 dark:border-slate-800/50">
+            <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-glow">
+                <i data-lucide="qr-code" class="w-6 h-6"></i>
+            </div>
+            <h1 id="app-title-desktop" class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">QRMUAJA</h1>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('generate')" id="tab-desk-generate" class="nav-desk-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium transition-all text-primary bg-primaryLight btn-press">
+                <i data-lucide="plus-square" class="w-5 h-5"></i> Buat QR Baru
+            </button>
+            <button onclick="switchTab('scan')" id="tab-desk-scan" class="nav-desk-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all btn-press">
+                <i data-lucide="scan" class="w-5 h-5"></i> Pindai QR
+            </button>
+            <button onclick="switchTab('history')" id="tab-desk-history" class="nav-desk-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all btn-press">
+                <i data-lucide="library" class="w-5 h-5"></i> Koleksi QR
+            </button>
+            <button onclick="switchTab('settings')" id="tab-desk-settings" class="nav-desk-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left font-medium text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all btn-press">
+                <i data-lucide="settings" class="w-5 h-5"></i> Pengaturan
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-100 dark:border-slate-800/50 text-xs text-center text-slate-400">
+            <p>Versi 1.1.0 &bull; Offline Ready</p>
+        </div>
+    </aside>
+
+    <!-- 3. MAIN CONTENT -->
+    <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+        
+        <!-- Mobile Header -->
+        <header class="md:hidden bg-primary z-10 sticky top-0 px-5 py-4 flex items-center justify-between shadow-md transition-colors duration-300">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
+                    <i data-lucide="qr-code" class="w-5 h-5"></i>
+                </div>
+                <h1 id="app-title-mobile" class="text-lg font-bold text-white tracking-wide">QRMUAJA</h1>
+            </div>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-white/20 text-white btn-press hover:bg-white/30 transition-colors">
+                <i data-lucide="moon" id="theme-icon" class="w-5 h-5"></i>
+            </button>
+        </header>
+
+        <!-- Desktop Header Extra (Theme Toggle) -->
+        <div class="hidden md:flex absolute top-5 right-6 z-20">
+            <button onclick="toggleDarkMode()" class="p-2.5 rounded-full bg-white dark:bg-darkSurface shadow-soft border border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-300 btn-press hover:scale-105 transition-transform">
+                <i data-lucide="moon" id="theme-icon-desk" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <!-- CONTENT AREA (Scrollable) -->
+        <div id="content-area" class="flex-1 overflow-y-auto pb-safe p-5 md:p-10 w-full max-w-5xl mx-auto scroll-smooth">
+            
+            <!-- SECTION: GENERATE -->
+            <section id="sec-generate" class="animate-fade-up">
+                <div class="mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Studio Pembuat QR</h2>
+                    <p class="text-slate-500 dark:text-slate-400">Rancang dan simpan QR Code Anda secara instan dan luring.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <!-- Form Area -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/60">
+                            
+                            <div class="mb-5">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipe Data</label>
+                                <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                                    <button type="button" onclick="setQRType('url')" id="type-url" class="qr-type-btn active px-3 py-2.5 rounded-xl border-2 border-primary bg-primaryLight text-primary font-medium text-sm flex flex-col items-center gap-1 btn-press">
+                                        <i data-lucide="link" class="w-5 h-5"></i> Tautan
+                                    </button>
+                                    <button type="button" onclick="setQRType('text')" id="type-text" class="qr-type-btn px-3 py-2.5 rounded-xl border-2 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium text-sm flex flex-col items-center gap-1 btn-press">
+                                        <i data-lucide="file-text" class="w-5 h-5"></i> Teks
+                                    </button>
+                                    <button type="button" onclick="setQRType('wifi')" id="type-wifi" class="qr-type-btn px-3 py-2.5 rounded-xl border-2 border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-medium text-sm flex flex-col items-center gap-1 btn-press">
+                                        <i data-lucide="wifi" class="w-5 h-5"></i> Wi-Fi
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="space-y-4" id="form-container">
+                                <!-- Dynamic Form Inputs will be rendered here -->
+                            </div>
+                            
+                            <div class="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Beri Nama QR Ini (Opsional)</label>
+                                <input type="text" id="qr-title" placeholder="Contoh: Menu Cafe Depan" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all dark:text-white placeholder-slate-400" oninput="saveDraft()">
+                            </div>
+
+                            <!-- Opsi Warna dan Logo -->
+                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Warna QR Code</label>
+                                    <div class="flex items-center gap-3">
+                                        <input type="color" id="qr-color" value="#000000" class="w-10 h-10 rounded cursor-pointer border-0 p-0 bg-transparent" onchange="saveDraft()">
+                                        <span class="text-sm text-slate-500 dark:text-slate-400">Pilih warna dasar</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Logo di Tengah (Opsional)</label>
+                                    <input type="file" id="qr-logo" accept="image/png, image/jpeg, image/webp" class="block w-full text-sm text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-primaryLight file:text-primary hover:file:bg-indigo-100 transition-all dark:file:bg-indigo-500/20 dark:hover:file:bg-indigo-500/30" onchange="handleLogoUpload(event)">
+                                    <button type="button" id="btn-remove-logo" onclick="removeLogo()" class="hidden mt-2 text-xs text-red-500 font-medium hover:text-red-600 flex items-center gap-1">
+                                        <i data-lucide="x-circle" class="w-3 h-3"></i> Hapus Logo
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex gap-3">
+                                <button onclick="clearDraft()" class="px-5 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors btn-press">Reset</button>
+                                <button onclick="saveQRToDB()" class="flex-1 bg-primary text-white rounded-xl px-5 py-3 font-semibold shadow-glow hover:brightness-110 transition-all btn-press flex items-center justify-center gap-2">
+                                    <i data-lucide="save" class="w-5 h-5"></i> Simpan ke Koleksi
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview Area -->
+                    <div class="lg:col-span-5">
+                        <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/60 sticky top-6 flex flex-col items-center text-center">
+                            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-6">Pratinjau Langsung</h3>
+                            
+                            <div id="qr-export-wrapper" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center relative group" style="min-width: 260px;">
+                                <!-- Background Pattern -->
+                                <div class="absolute inset-0 opacity-5 pointer-events-none rounded-3xl overflow-hidden" style="background-image: radial-gradient(var(--color-primary) 1px, transparent 1px); background-size: 20px 20px;"></div>
+                                
+                                <canvas id="qr-canvas" class="w-48 h-48 sm:w-56 sm:h-56 relative z-10 transition-transform duration-300 group-hover:scale-105"></canvas>
+                                
+                                <div class="mt-5 relative z-10 w-full flex flex-col items-center">
+                                    <p id="preview-title" class="font-bold text-slate-800 text-lg md:text-xl text-center break-words max-w-full px-2 leading-tight">QR Code</p>
+                                    <p id="preview-subtitle" class="text-xs md:text-sm text-slate-500 mt-1.5 text-center break-words max-w-[90%] leading-tight">Scan me</p>
+                                </div>
+                            </div>
+
+                            <div class="w-full grid grid-cols-2 gap-3 mt-8">
+                                <button onclick="downloadQR('qr-export-wrapper', 'preview-title')" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-3 font-medium transition-colors btn-press flex items-center justify-center gap-2 text-sm">
+                                    <i data-lucide="image" class="w-4 h-4"></i> Unduh PNG
+                                </button>
+                                <button onclick="shareQR('qr-export-wrapper', 'preview-title')" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-3 font-medium transition-colors btn-press flex items-center justify-center gap-2 text-sm">
+                                    <i data-lucide="share-2" class="w-4 h-4"></i> Bagikan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: SCANNER -->
+            <section id="sec-scan" class="hidden animate-fade-up">
+                <div class="mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Pemindai QR</h2>
+                    <p class="text-slate-500 dark:text-slate-400">Arahkan kamera ke QR Code untuk membaca dan menyimpan datanya.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <!-- Scanner Area -->
+                    <div class="md:col-span-7 flex flex-col items-center">
+                        <div class="w-full bg-white dark:bg-darkSurface p-4 rounded-3xl shadow-soft border border-slate-100 dark:border-slate-800/60 flex flex-col items-center">
+                            
+                            <div id="reader-container" class="w-full max-w-sm overflow-hidden rounded-2xl border-2 border-primary border-dashed relative bg-slate-50 dark:bg-slate-900 aspect-square flex items-center justify-center">
+                                <div id="reader-placeholder" class="text-center p-6 absolute inset-0 flex flex-col items-center justify-center z-10">
+                                    <div class="w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-500/20 text-primary flex items-center justify-center mb-4">
+                                        <i data-lucide="camera" class="w-8 h-8"></i>
+                                    </div>
+                                    <p class="text-sm text-slate-500 dark:text-slate-400 font-medium">Kamera Sedang Nonaktif</p>
+                                </div>
+                                <div id="reader" class="w-full h-full object-cover"></div>
+                            </div>
+
+                            <button id="btn-toggle-scan" onclick="toggleScanner()" class="mt-6 w-full max-w-sm bg-primary text-white rounded-xl px-5 py-3 font-semibold shadow-glow hover:brightness-110 transition-all btn-press flex items-center justify-center gap-2">
+                                <i data-lucide="play" id="scan-btn-icon" class="w-5 h-5"></i> 
+                                <span id="scan-btn-text">Mulai Pindai</span>
+                            </button>
+                            <p class="text-xs text-slate-400 mt-4 text-center max-w-sm">Pastikan Anda memberikan izin akses kamera pada browser saat diminta.</p>
+                        </div>
+                    </div>
+
+                    <!-- Hasil Scan (Realtime view) -->
+                    <div class="md:col-span-5">
+                        <div id="scan-result-card" class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/60 opacity-50 pointer-events-none transition-all duration-300">
+                            <h3 class="text-sm font-semibold uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                                <i data-lucide="file-check" class="w-4 h-4 text-green-500"></i> Hasil Pemindaian
+                            </h3>
+                            
+                            <div class="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-700 min-h-[100px] flex items-center justify-center relative">
+                                <p id="scanned-text" class="text-sm text-slate-700 dark:text-slate-300 break-words w-full text-center">Belum ada data QR yang dipindai.</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 mt-5">
+                                <button onclick="copyScannedText()" class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-3 font-medium transition-colors btn-press flex items-center justify-center gap-2 text-sm">
+                                    <i data-lucide="copy" class="w-4 h-4"></i> Salin Teks
+                                </button>
+                                <button onclick="openScannedLink()" id="btn-open-link" class="bg-primary/10 text-primary hover:bg-primary/20 rounded-xl px-4 py-3 font-medium transition-colors btn-press flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                    <i data-lucide="external-link" class="w-4 h-4"></i> Buka Tautan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Koleksi / Riwayat Pindai -->
+                <div class="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                        <i data-lucide="history" class="w-5 h-5 text-primary"></i> Riwayat Hasil Pindai
+                    </h3>
+                    
+                    <div id="scan-history-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Data History Pindai -->
+                    </div>
+
+                    <div id="scan-history-empty" class="hidden flex flex-col items-center justify-center py-10 text-center">
+                        <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-3 text-slate-400">
+                            <i data-lucide="clock" class="w-8 h-8"></i>
+                        </div>
+                        <p class="text-sm font-medium text-slate-500 dark:text-slate-400">Belum ada riwayat pemindaian.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: HISTORY -->
+            <section id="sec-history" class="hidden animate-fade-up">
+                <div class="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Koleksi Tersimpan</h2>
+                        <p class="text-slate-500 dark:text-slate-400">Akses semua QR Code yang pernah Anda buat di sini.</p>
+                    </div>
+                    <div class="relative w-full sm:w-64">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400"></i>
+                        <input type="text" id="search-qr" onkeyup="renderHistory()" placeholder="Cari nama atau isi..." class="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-darkSurface border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary text-sm dark:text-white">
+                    </div>
+                </div>
+
+                <div id="history-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    <!-- History Cards Rendered Here -->
+                </div>
+                
+                <div id="history-empty" class="hidden flex flex-col items-center justify-center py-20 text-center">
+                    <div class="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 text-slate-400">
+                        <i data-lucide="inbox" class="w-10 h-10"></i>
+                    </div>
+                    <h3 class="text-lg font-semibold text-slate-700 dark:text-slate-200">Koleksi Masih Kosong</h3>
+                    <p class="text-slate-500 mt-2 max-w-sm">Anda belum menyimpan QR Code apa pun. Buat dan simpan QR Code pertama Anda sekarang.</p>
+                    <button onclick="switchTab('generate')" class="mt-6 text-primary font-medium hover:underline">Buat QR Sekarang</button>
+                </div>
+            </section>
+
+            <!-- SECTION: SETTINGS -->
+            <section id="sec-settings" class="hidden animate-fade-up">
+                <div class="mb-8">
+                    <h2 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white mb-2">Pengaturan Sistem</h2>
+                    <p class="text-slate-500 dark:text-slate-400">Personalisasi tampilan dan kelola data aplikasi.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Branding & Tema -->
+                    <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/60">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                            <i data-lucide="palette" class="w-5 h-5 text-primary"></i> Branding & Tema
+                        </h3>
+                        
+                        <div class="space-y-5">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Nama Brand Aplikasi</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="setting-app-name" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white">
+                                    <button onclick="saveAppName()" class="bg-primary text-white px-4 py-2.5 rounded-xl font-medium btn-press">Simpan</button>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Warna Utama (Primary Color)</label>
+                                <div class="flex items-center gap-4">
+                                    <input type="color" id="setting-color" class="w-12 h-12 rounded cursor-pointer border-0 p-0 bg-transparent" onchange="previewColor(this.value)">
+                                    <div class="flex-1 flex gap-2 overflow-x-auto pb-2">
+                                        <button onclick="setThemeColor('#4F46E5')" class="w-8 h-8 rounded-full bg-[#4F46E5] flex-shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-[#4F46E5] dark:focus:ring-offset-darkSurface btn-press"></button>
+                                        <button onclick="setThemeColor('#10B981')" class="w-8 h-8 rounded-full bg-[#10B981] flex-shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-[#10B981] dark:focus:ring-offset-darkSurface btn-press"></button>
+                                        <button onclick="setThemeColor('#F59E0B')" class="w-8 h-8 rounded-full bg-[#F59E0B] flex-shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-[#F59E0B] dark:focus:ring-offset-darkSurface btn-press"></button>
+                                        <button onclick="setThemeColor('#E11D48')" class="w-8 h-8 rounded-full bg-[#E11D48] flex-shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-[#E11D48] dark:focus:ring-offset-darkSurface btn-press"></button>
+                                        <button onclick="setThemeColor('#0EA5E9')" class="w-8 h-8 rounded-full bg-[#0EA5E9] flex-shrink-0 focus:ring-2 focus:ring-offset-2 focus:ring-[#0EA5E9] dark:focus:ring-offset-darkSurface btn-press"></button>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-500 mt-2">Pilih warna untuk menyesuaikan identitas brand Anda.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data & Backup -->
+                    <div class="bg-white dark:bg-darkSurface p-6 rounded-2xl shadow-soft border border-slate-100 dark:border-slate-800/60">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-5 flex items-center gap-2">
+                            <i data-lucide="database" class="w-5 h-5 text-primary"></i> Data & Pencadangan
+                        </h3>
+                        
+                        <div class="space-y-4">
+                            <button onclick="exportToExcel()" class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary transition-colors btn-press group">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded bg-green-100 text-green-600 flex items-center justify-center"><i data-lucide="download" class="w-4 h-4"></i></div>
+                                    <div class="text-left"><p class="font-medium text-sm text-slate-800 dark:text-slate-200">Export Excel (.xlsx)</p><p class="text-xs text-slate-500">Cadangkan data QR ke PC/HP</p></div>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors"></i>
+                            </button>
+
+                            <label class="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary transition-colors btn-press group cursor-pointer">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded bg-blue-100 text-blue-600 flex items-center justify-center"><i data-lucide="upload" class="w-4 h-4"></i></div>
+                                    <div class="text-left"><p class="font-medium text-sm text-slate-800 dark:text-slate-200">Import Excel</p><p class="text-xs text-slate-500">Pulihkan data dari cadangan</p></div>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors"></i>
+                                <input type="file" id="import-excel" accept=".xlsx, .xls" class="hidden" onchange="importFromExcel(event)">
+                            </label>
+
+                            <div class="pt-4 border-t border-slate-100 dark:border-slate-800 mt-2">
+                                <button onclick="confirmResetDB()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-xl font-medium hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors btn-press">
+                                    <i data-lucide="alert-triangle" class="w-4 h-4"></i> Reset Aplikasi (Hapus Semua)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 4. MOBILE BOTTOM NAV -->
+    <nav class="md:hidden fixed bottom-0 left-0 w-full glass-nav z-30 px-2 sm:px-6 py-2 pb-[max(env(safe-area-inset-bottom),8px)]">
+        <ul class="flex justify-between items-center w-full">
+            <li class="flex-1 text-center">
+                <button onclick="switchTab('generate')" id="tab-mob-generate" class="nav-mob-btn w-full flex flex-col items-center gap-1 py-2 text-primary">
+                    <div class="nav-icon-wrap relative p-1.5 rounded-xl bg-primaryLight transition-all">
+                        <i data-lucide="plus-square" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-semibold">Buat</span>
+                </button>
+            </li>
+            <li class="flex-1 text-center">
+                <button onclick="switchTab('scan')" id="tab-mob-scan" class="nav-mob-btn w-full flex flex-col items-center gap-1 py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <div class="nav-icon-wrap relative p-1.5 rounded-xl transition-all">
+                        <i data-lucide="scan" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-medium">Pindai</span>
+                </button>
+            </li>
+            <li class="flex-1 text-center">
+                <button onclick="switchTab('history')" id="tab-mob-history" class="nav-mob-btn w-full flex flex-col items-center gap-1 py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <div class="nav-icon-wrap relative p-1.5 rounded-xl transition-all">
+                        <i data-lucide="library" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-medium">Koleksi</span>
+                </button>
+            </li>
+            <li class="flex-1 text-center">
+                <button onclick="switchTab('settings')" id="tab-mob-settings" class="nav-mob-btn w-full flex flex-col items-center gap-1 py-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                    <div class="nav-icon-wrap relative p-1.5 rounded-xl transition-all">
+                        <i data-lucide="settings" class="w-6 h-6"></i>
+                    </div>
+                    <span class="text-[10px] font-medium">Pengaturan</span>
+                </button>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- MODAL: HAPUS KONFIRMASI -->
+    <div id="modal-delete" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm" onclick="closeDeleteModal()"></div>
+        <!-- Content -->
+        <div class="bg-white dark:bg-darkSurface w-[90%] max-w-sm rounded-3xl p-6 relative z-10 animate-pop shadow-2xl border border-slate-100 dark:border-slate-800">
+            <div class="w-14 h-14 rounded-full bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 flex items-center justify-center mx-auto mb-4">
+                <i data-lucide="trash-2" class="w-7 h-7"></i>
+            </div>
+            <h3 class="text-xl font-bold text-center text-slate-900 dark:text-white mb-2">Hapus Item?</h3>
+            <p class="text-center text-slate-500 dark:text-slate-400 text-sm mb-6">Data ini akan dihapus permanen dari perangkat. Tindakan ini tidak dapat dibatalkan.</p>
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()" class="flex-1 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-medium btn-press hover:bg-slate-200 dark:hover:bg-slate-700">Batal</button>
+                <button id="btn-confirm-delete" class="flex-1 py-3 rounded-xl bg-red-600 text-white font-medium btn-press shadow-glow shadow-red-500/30 hover:bg-red-700">Ya, Hapus</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL / BOTTOM SHEET: QR DETAIL -->
+    <div id="modal-qr-detail" class="fixed inset-0 z-50 hidden flex-col justify-end md:justify-center md:items-center">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm transition-opacity opacity-0" id="detail-overlay" onclick="closeDetailModal()"></div>
+        
+        <!-- Sheet Content -->
+        <div id="detail-sheet" class="bottom-sheet bg-white dark:bg-darkSurface w-full md:w-[400px] rounded-t-3xl md:rounded-3xl relative z-10 flex flex-col pb-safe md:pb-6 shadow-2xl border-t md:border border-slate-100 dark:border-slate-800 max-h-[90vh]">
+            
+            <!-- SWIPE HANDLE -->
+            <div id="qr-drag-handle" class="w-full py-2 flex justify-center md:hidden active:bg-slate-50 dark:active:bg-slate-800/50 rounded-t-3xl">
+                <div class="drag-handle"></div>
+            </div>
+
+            <!-- Close Button Desktop -->
+            <button onclick="closeDetailModal()" class="hidden md:flex absolute top-4 right-4 w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-full items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white btn-press">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+
+            <div class="p-6 overflow-y-auto pt-2 md:pt-6">
+                <div class="flex flex-col items-center">
+                    <div id="detail-export-wrapper" class="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center relative group" style="min-width: 260px;">
+                        <div class="absolute inset-0 opacity-5 pointer-events-none rounded-3xl overflow-hidden" style="background-image: radial-gradient(var(--color-primary) 1px, transparent 1px); background-size: 20px 20px;"></div>
+                        <canvas id="detail-qr-canvas" class="w-48 h-48 sm:w-56 sm:h-56 relative z-10 transition-transform duration-300 group-hover:scale-105"></canvas>
+                        <div class="mt-5 relative z-10 w-full flex flex-col items-center">
+                            <p id="detail-title" class="font-bold text-slate-800 text-lg md:text-xl text-center break-words max-w-full px-2 leading-tight"></p>
+                            <p id="detail-date" class="text-xs md:text-sm text-slate-500 mt-1.5 text-center break-words max-w-[90%] leading-tight"></p>
+                        </div>
+                    </div>
+                    
+                    <div class="w-full bg-slate-50 dark:bg-slate-900 rounded-xl p-4 mt-6 border border-slate-100 dark:border-slate-800">
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Konten Data</p>
+                        <p id="detail-content" class="text-sm text-slate-700 dark:text-slate-300 break-all line-clamp-3"></p>
+                    </div>
+
+                    <div class="w-full grid grid-cols-2 gap-3 mt-6">
+                        <button id="btn-detail-download" onclick="downloadQR('detail-export-wrapper', 'detail-title')" class="w-full bg-primary text-white rounded-xl px-4 py-3 font-medium shadow-glow hover:brightness-110 btn-press flex items-center justify-center gap-2">
+                            <i data-lucide="download" class="w-5 h-5"></i> Simpan
+                        </button>
+                        <button id="btn-detail-share" onclick="shareQR('detail-export-wrapper', 'detail-title')" class="w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl px-4 py-3 font-medium transition-colors btn-press flex items-center justify-center gap-2">
+                            <i data-lucide="share-2" class="w-5 h-5"></i> Bagikan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. CORE & THEME SYSTEM ---
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        let primaryColor = localStorage.getItem('primaryColor') || '#4F46E5';
+        let appName = localStorage.getItem('appName') || 'QRMUAJA';
+
+        function initApp() {
+            applyTheme();
+            applyPrimaryColor(primaryColor);
+            updateAppNameDisplay(appName);
+            document.getElementById('setting-app-name').value = appName;
+            document.getElementById('setting-color').value = primaryColor;
+            
+            lucide.createIcons();
+            initDB().then(() => {
+                loadDraft();
+                setQRType(localStorage.getItem('draft_qr_type') || 'url');
+                checkDummyData();
+                renderHistory();
+                renderScanHistory();
+            }).catch(err => showToast("Gagal memuat database!", "error"));
+            
+            registerSW();
+        }
+
+        function toggleDarkMode() {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            localStorage.setItem('theme', currentTheme);
+            applyTheme();
+        }
+
+        function applyTheme() {
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').setAttribute('data-lucide', 'sun');
+                if(document.getElementById('theme-icon-desk')) document.getElementById('theme-icon-desk').setAttribute('data-lucide', 'sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('theme-icon').setAttribute('data-lucide', 'moon');
+                if(document.getElementById('theme-icon-desk')) document.getElementById('theme-icon-desk').setAttribute('data-lucide', 'moon');
+            }
+            lucide.createIcons();
+            generateQRPreview(); 
+        }
+
+        function applyPrimaryColor(hex) {
+            document.documentElement.style.setProperty('--color-primary', hex);
+            let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            document.documentElement.style.setProperty('--color-primary-rgb', `${r}, ${g}, ${b}`);
+            document.getElementById('meta-theme-color').content = hex;
+            generateQRPreview(); 
+        }
+
+        function setThemeColor(hex) {
+            primaryColor = hex;
+            document.getElementById('setting-color').value = hex;
+            applyPrimaryColor(hex);
+            localStorage.setItem('primaryColor', hex);
+            showToast("Warna tema diperbarui!");
+        }
+
+        function previewColor(hex) { setThemeColor(hex); }
+
+        function saveAppName() {
+            let name = document.getElementById('setting-app-name').value.trim();
+            if(!name) name = "QRMUAJA";
+            appName = name;
+            localStorage.setItem('appName', appName);
+            updateAppNameDisplay(appName);
+            showToast("Nama aplikasi disimpan!");
+        }
+
+        function updateAppNameDisplay(name) {
+            document.getElementById('app-title-desktop').textContent = name;
+            document.getElementById('app-title-mobile').textContent = name;
+            document.getElementById('app-title-meta').textContent = `${name} - Premium QR Generator`;
+        }
+
+        // --- 2. NAVIGATION SYSTEM ---
+        function switchTab(tabId) {
+            if (tabId !== 'scan' && isScanning) {
+                stopScanner();
+            }
+
+            ['generate', 'scan', 'history', 'settings'].forEach(id => {
+                document.getElementById(`sec-${id}`).classList.add('hidden');
+                
+                let deskBtn = document.getElementById(`tab-desk-${id}`);
+                deskBtn.classList.remove('text-primary', 'bg-primaryLight');
+                deskBtn.classList.add('text-slate-500', 'hover:bg-slate-100', 'dark:hover:bg-slate-800/50');
+                
+                let mobBtn = document.getElementById(`tab-mob-${id}`);
+                mobBtn.classList.remove('text-primary');
+                mobBtn.classList.add('text-slate-400');
+                mobBtn.querySelector('.nav-icon-wrap').classList.remove('bg-primaryLight');
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            
+            let activeDesk = document.getElementById(`tab-desk-${tabId}`);
+            activeDesk.classList.add('text-primary', 'bg-primaryLight');
+            activeDesk.classList.remove('text-slate-500', 'hover:bg-slate-100', 'dark:hover:bg-slate-800/50');
+
+            let activeMob = document.getElementById(`tab-mob-${tabId}`);
+            activeMob.classList.add('text-primary');
+            activeMob.classList.remove('text-slate-400');
+            activeMob.querySelector('.nav-icon-wrap').classList.add('bg-primaryLight');
+
+            if(tabId === 'history') renderHistory();
+            if(tabId === 'scan') renderScanHistory();
+            
+            document.getElementById('content-area').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        // --- 3. TOAST SYSTEM ---
+        function showToast(message, type = "success") {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            const isSuccess = type === "success";
+            const icon = isSuccess ? 'check-circle' : 'alert-circle';
+            // Mengubah warna success menggunakan kelas bg-primary agar mengikuti warna tema yang dipilih
+            const colorClass = isSuccess ? 'bg-primary' : 'bg-red-500';
+            
+            toast.className = `${colorClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 animate-slide-right pointer-events-auto`;
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5"></i><span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(20px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // --- 4. DATABASE (INDEXEDDB - UPDATED TO VERSION 2 UNTUK RIWAYAT SCAN) ---
+        const dbName = "QRMUAJADB";
+        let db;
+
+        const initDB = () => new Promise((resolve, reject) => {
+            const request = indexedDB.open(dbName, 2);
+            request.onupgradeneeded = (e) => {
+                db = e.target.result;
+                // Store untuk QR yang dibuat (Generate)
+                if (!db.objectStoreNames.contains('qrcodes')) {
+                    const store = db.createObjectStore('qrcodes', { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+                // Store untuk riwayat Scanner
+                if (!db.objectStoreNames.contains('scanned_qrs')) {
+                    const storeScan = db.createObjectStore('scanned_qrs', { keyPath: 'id', autoIncrement: true });
+                    storeScan.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+            };
+            request.onsuccess = (e) => { db = e.target.result; resolve(db); };
+            request.onerror = (e) => reject(e.target.error);
+        });
+
+        // Database logic untuk Koleksi Generate
+        const addData = (data) => new Promise((resolve, reject) => {
+            const tx = db.transaction(['qrcodes'], 'readwrite');
+            const req = tx.objectStore('qrcodes').add({...data, createdAt: new Date().getTime()});
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+
+        const getAllData = () => new Promise((resolve, reject) => {
+            const tx = db.transaction(['qrcodes'], 'readonly');
+            const req = tx.objectStore('qrcodes').getAll();
+            req.onsuccess = () => resolve(req.result.sort((a,b) => b.createdAt - a.createdAt));
+            req.onerror = () => reject(req.error);
+        });
+
+        const deleteData = (id) => new Promise((resolve, reject) => {
+            const tx = db.transaction(['qrcodes'], 'readwrite');
+            const req = tx.objectStore('qrcodes').delete(id);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+
+        // Database logic untuk Koleksi Pindai (Scanner)
+        const addScannedData = (data) => new Promise((resolve, reject) => {
+            const tx = db.transaction(['scanned_qrs'], 'readwrite');
+            const req = tx.objectStore('scanned_qrs').add({...data, createdAt: new Date().getTime()});
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+
+        const getAllScannedData = () => new Promise((resolve, reject) => {
+            const tx = db.transaction(['scanned_qrs'], 'readonly');
+            const req = tx.objectStore('scanned_qrs').getAll();
+            req.onsuccess = () => resolve(req.result.sort((a,b) => b.createdAt - a.createdAt));
+            req.onerror = () => reject(req.error);
+        });
+
+        const deleteScannedData = (id) => new Promise((resolve, reject) => {
+            const tx = db.transaction(['scanned_qrs'], 'readwrite');
+            const req = tx.objectStore('scanned_qrs').delete(id);
+            req.onsuccess = () => resolve();
+            req.onerror = () => reject(req.error);
+        });
+        
+        const clearDB = () => new Promise((resolve, reject) => {
+            const tx = db.transaction(['qrcodes', 'scanned_qrs'], 'readwrite');
+            tx.objectStore('qrcodes').clear();
+            tx.objectStore('scanned_qrs').clear();
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+        });
+
+        // Auto Dummy Data
+        async function checkDummyData() {
+            if (localStorage.getItem('dummy_injected')) return;
+            try {
+                const countReq = db.transaction(['qrcodes'], 'readonly').objectStore('qrcodes').count();
+                countReq.onsuccess = async () => {
+                    if (countReq.result === 0) {
+                        await addData({ title: "Website Resmi", content: "https://bejajadigital.com", type: "url", color: "#4F46E5" });
+                        localStorage.setItem('dummy_injected', 'true');
+                    }
+                };
+            } catch(e) { console.error("Dummy inject error", e); }
+        }
+
+        // --- 5. QR GENERATION LOGIC ---
+        let currentType = 'url';
+        let currentLogoBase64 = null;
+
+        const formTemplates = {
+            url: `<input type="url" id="inp-url" placeholder="Masukkan URL (https://...)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white" oninput="saveDraft()">`,
+            text: `<textarea id="inp-text" rows="3" placeholder="Masukkan teks, nomor, atau pesan..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white resize-none" oninput="saveDraft()"></textarea>`,
+            wifi: `
+                <div class="space-y-3">
+                    <input type="text" id="inp-wifi-ssid" placeholder="Nama Wi-Fi (SSID)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white" oninput="saveDraft()">
+                    <input type="password" id="inp-wifi-pass" placeholder="Kata Sandi (Password)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white" oninput="saveDraft()">
+                    <select id="inp-wifi-type" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary dark:text-white" onchange="saveDraft()">
+                        <option value="WPA">WPA/WPA2</option>
+                        <option value="WEP">WEP</option>
+                        <option value="nopass">Tanpa Sandi</option>
+                    </select>
+                </div>
+            `
+        };
+
+        function setQRType(type) {
+            currentType = type;
+            localStorage.setItem('draft_qr_type', type);
+            
+            document.querySelectorAll('.qr-type-btn').forEach(btn => {
+                btn.classList.remove('border-primary', 'bg-primaryLight', 'text-primary', 'active');
+                btn.classList.add('border-slate-100', 'dark:border-slate-800', 'text-slate-500');
+            });
+            const activeBtn = document.getElementById(`type-${type}`);
+            activeBtn.classList.remove('border-slate-100', 'dark:border-slate-800', 'text-slate-500');
+            activeBtn.classList.add('border-primary', 'bg-primaryLight', 'text-primary', 'active');
+
+            document.getElementById('form-container').innerHTML = formTemplates[type];
+            loadDraftValues(type); 
+            generateQRPreview();
+        }
+
+        let typingTimer;
+        function saveDraft() {
+            clearTimeout(typingTimer);
+            let content = getDraftContentFromInputs();
+            localStorage.setItem(`draft_data_${currentType}`, JSON.stringify(content));
+            localStorage.setItem('draft_title', document.getElementById('qr-title').value);
+            localStorage.setItem('draft_qr_color', document.getElementById('qr-color').value);
+            if (currentLogoBase64) localStorage.setItem('draft_qr_logo', currentLogoBase64);
+            else localStorage.removeItem('draft_qr_logo');
+            
+            typingTimer = setTimeout(generateQRPreview, 500); 
+        }
+
+        function getDraftContentFromInputs() {
+            if(currentType === 'url') return { val: document.getElementById('inp-url')?.value || '' };
+            if(currentType === 'text') return { val: document.getElementById('inp-text')?.value || '' };
+            if(currentType === 'wifi') return { 
+                ssid: document.getElementById('inp-wifi-ssid')?.value || '',
+                pass: document.getElementById('inp-wifi-pass')?.value || '',
+                type: document.getElementById('inp-wifi-type')?.value || 'WPA'
+            };
+            return {};
+        }
+
+        function loadDraftValues(type) {
+            const data = JSON.parse(localStorage.getItem(`draft_data_${type}`) || '{}');
+            if(type === 'url' && data.val) document.getElementById('inp-url').value = data.val;
+            if(type === 'text' && data.val) document.getElementById('inp-text').value = data.val;
+            if(type === 'wifi') {
+                if(data.ssid) document.getElementById('inp-wifi-ssid').value = data.ssid;
+                if(data.pass) document.getElementById('inp-wifi-pass').value = data.pass;
+                if(data.type) document.getElementById('inp-wifi-type').value = data.type;
+            }
+        }
+
+        function loadDraft() {
+            document.getElementById('qr-title').value = localStorage.getItem('draft_title') || '';
+            document.getElementById('qr-color').value = localStorage.getItem('draft_qr_color') || '#000000';
+            currentLogoBase64 = localStorage.getItem('draft_qr_logo') || null;
+            if (currentLogoBase64) document.getElementById('btn-remove-logo').classList.remove('hidden');
+            else document.getElementById('btn-remove-logo').classList.add('hidden');
+        }
+
+        function clearDraft() {
+            localStorage.removeItem(`draft_data_${currentType}`);
+            localStorage.removeItem('draft_title');
+            localStorage.removeItem('draft_qr_color');
+            localStorage.removeItem('draft_qr_logo');
+            document.getElementById('qr-title').value = '';
+            document.getElementById('qr-color').value = '#000000';
+            removeLogo();
+            setQRType(currentType);
+            generateQRPreview();
+            showToast("Draft direset.");
+        }
+
+        function handleLogoUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                currentLogoBase64 = e.target.result;
+                document.getElementById('btn-remove-logo').classList.remove('hidden');
+                saveDraft();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeLogo() {
+            currentLogoBase64 = null;
+            document.getElementById('qr-logo').value = '';
+            document.getElementById('btn-remove-logo').classList.add('hidden');
+            saveDraft();
+        }
+
+        function getFinalQRString() {
+            const data = getDraftContentFromInputs();
+            if(currentType === 'url' || currentType === 'text') return data.val || "QRMUAJA";
+            if(currentType === 'wifi') {
+                if(!data.ssid) return "QRMUAJA";
+                return `WIFI:S:${data.ssid};T:${data.type};P:${data.pass};;`;
+            }
+            return "QRMUAJA";
+        }
+
+        function generateQRPreview() {
+            const val = getFinalQRString();
+            const color = document.getElementById('qr-color').value || '#000000';
+            
+            drawQRWithLogo('qr-canvas', val, color, currentLogoBase64);
+
+            let title = document.getElementById('qr-title').value.trim();
+            document.getElementById('preview-title').textContent = title || "QR Code";
+            
+            let subtitle = val;
+            if(currentType === 'wifi') subtitle = `Wi-Fi: ${document.getElementById('inp-wifi-ssid')?.value || 'Unknown'}`;
+            document.getElementById('preview-subtitle').textContent = subtitle || "Masukkan data...";
+        }
+
+        async function drawQRWithLogo(canvasId, value, color, logoSrc) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            new QRious({
+                element: canvas,
+                value: value === "Bejaja Digital" ? "https://s.shopee.co.id/6VJRF7cyUi" : value, 
+                size: 300,
+                level: 'H', 
+                foreground: color || '#000000',
+                background: '#ffffff',
+                padding: null
+            });
+
+            if (logoSrc) {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = "Anonymous";
+                    img.onload = () => {
+                        const size = 300;
+                        const logoSize = size * 0.25; 
+                        const xy = (size - logoSize) / 2;
+
+                        ctx.fillStyle = '#ffffff';
+                        const padding = 6;
+                        ctx.fillRect(xy - padding, xy - padding, logoSize + padding*2, logoSize + padding*2);
+                        
+                        ctx.drawImage(img, xy, xy, logoSize, logoSize);
+                        resolve();
+                    };
+                    img.onerror = resolve; 
+                    img.src = logoSrc;
+                });
+            }
+            return Promise.resolve();
+        }
+
+        // --- 5B. QR SCANNER LOGIC ---
+        let html5QrCode = null;
+        let isScanning = false;
+        let lastScannedText = "";
+
+        async function toggleScanner() {
+            if (isScanning) await stopScanner();
+            else await startScanner();
+        }
+
+        async function startScanner() {
+            try {
+                if (!html5QrCode) html5QrCode = new Html5Qrcode("reader");
+                document.getElementById('reader-placeholder').classList.add('hidden');
+                
+                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    config, 
+                    onScanSuccess,
+                    (errorMessage) => { }
+                );
+                
+                isScanning = true;
+                document.getElementById('scan-btn-icon').setAttribute('data-lucide', 'square');
+                document.getElementById('scan-btn-text').textContent = 'Hentikan Pindai';
+                document.getElementById('btn-toggle-scan').classList.replace('bg-primary', 'bg-red-500');
+                lucide.createIcons();
+                
+            } catch (err) {
+                document.getElementById('reader-placeholder').classList.remove('hidden');
+                showToast("Gagal mengakses kamera. Periksa izin browser.", "error");
+            }
+        }
+
+        async function stopScanner() {
+            if (html5QrCode && isScanning) {
+                try {
+                    await html5QrCode.stop();
+                    isScanning = false;
+                    document.getElementById('reader-placeholder').classList.remove('hidden');
+                    
+                    document.getElementById('scan-btn-icon').setAttribute('data-lucide', 'play');
+                    document.getElementById('scan-btn-text').textContent = 'Mulai Pindai';
+                    document.getElementById('btn-toggle-scan').classList.replace('bg-red-500', 'bg-primary');
+                    lucide.createIcons();
+                } catch (err) { console.error("Failed to stop scanner", err); }
+            }
+        }
+
+        // AUTO-SAVE SETIAP KALI SCAN BERHASIL
+        async function onScanSuccess(decodedText, decodedResult) {
+            stopScanner();
+            
+            // Deteksi Tipe Data
+            let type = 'text';
+            if (decodedText.startsWith('http://') || decodedText.startsWith('https://')) type = 'url';
+            else if (decodedText.startsWith('WIFI:')) type = 'wifi';
+            
+            // Simpan otomatis ke Koleksi Pindai
+            await addScannedData({ content: decodedText, type: type });
+            renderScanHistory(); // Update List Koleksi Pindai
+            
+            openScannedDetail(decodedText);
+            showToast("QR Code berhasil dipindai & disimpan!");
+        }
+
+        function openScannedDetail(content) {
+            lastScannedText = content;
+            const resultCard = document.getElementById('scan-result-card');
+            resultCard.classList.remove('opacity-50', 'pointer-events-none');
+            resultCard.classList.add('animate-pop');
+            
+            const textEl = document.getElementById('scanned-text');
+            textEl.textContent = content;
+            textEl.classList.remove('text-center');
+            textEl.classList.add('text-left', 'font-mono', 'text-sm');
+            
+            const btnLink = document.getElementById('btn-open-link');
+            if (content.startsWith('http://') || content.startsWith('https://')) btnLink.disabled = false;
+            else btnLink.disabled = true;
+            
+            setTimeout(() => resultCard.classList.remove('animate-pop'), 400);
+            
+            // Gulir layar ke hasil scan secara lembut
+            document.getElementById('content-area').scrollTo({top: 0, behavior: 'smooth'});
+        }
+
+        function copyScannedText() {
+            if (!lastScannedText) return;
+            navigator.clipboard.writeText(lastScannedText).then(() => {
+                showToast("Teks berhasil disalin!");
+            }).catch(() => {
+                const textArea = document.createElement("textarea");
+                textArea.value = lastScannedText;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand("copy");
+                document.body.removeChild(textArea);
+                showToast("Teks berhasil disalin!");
+            });
+        }
+
+        function openScannedLink() {
+            if (lastScannedText && (lastScannedText.startsWith('http://') || lastScannedText.startsWith('https://'))) {
+                window.open(lastScannedText, '_blank');
+            }
+        }
+
+        // --- 6. ACTION & HISTORY GENERATED ---
+        async function saveQRToDB() {
+            const val = getFinalQRString();
+            if(val === "QRMUAJA" || val.trim() === "") return showToast("Isi data terlebih dahulu!", "error");
+
+            let title = document.getElementById('qr-title').value.trim() || `QR ${currentType.toUpperCase()}`;
+            const color = document.getElementById('qr-color').value || '#000000';
+            
+            try {
+                await addData({ title, content: val, type: currentType, color: color, logo: currentLogoBase64 });
+                showToast("QR Berhasil Disimpan!");
+                clearDraft(); 
+            } catch (e) { showToast("Gagal menyimpan data", "error"); }
+        }
+
+        async function renderHistory() {
+            const grid = document.getElementById('history-grid');
+            const emptyState = document.getElementById('history-empty');
+            const searchQ = document.getElementById('search-qr').value.toLowerCase();
+            
+            grid.innerHTML = '';
+            try {
+                let data = await getAllData();
+                if(searchQ) data = data.filter(item => item.title.toLowerCase().includes(searchQ) || item.content.toLowerCase().includes(searchQ));
+
+                if(data.length === 0) {
+                    grid.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                } else {
+                    grid.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+                    
+                    data.forEach(item => {
+                        const date = new Date(item.createdAt).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' });
+                        const iconType = item.type === 'url' ? 'link' : (item.type === 'wifi' ? 'wifi' : 'file-text');
+                        const thumbCanvasId = `thumb-${item.id}`;
+
+                        const card = document.createElement('div');
+                        card.className = "bg-white dark:bg-darkSurface p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/60 hover:shadow-soft transition-all group flex items-center gap-4 cursor-pointer btn-press animate-pop";
+                        card.onclick = () => openDetailModal(item);
+                        
+                        card.innerHTML = `
+                            <div class="w-16 h-16 rounded-xl bg-slate-50 border border-slate-100 p-1 flex-shrink-0">
+                                <canvas id="${thumbCanvasId}" class="w-full h-full object-contain rounded-lg"></canvas>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <h4 class="font-bold text-slate-800 dark:text-white truncate">${item.title}</h4>
+                                <div class="flex items-center gap-2 text-xs text-slate-500 mt-1">
+                                    <i data-lucide="${iconType}" class="w-3 h-3"></i> 
+                                    <span class="truncate">${item.type.toUpperCase()} &bull; ${date}</span>
+                                </div>
+                            </div>
+                            <div class="relative z-10 flex flex-col sm:flex-row gap-1">
+                                <button onclick="event.stopPropagation(); quickShareQR('${thumbCanvasId}', '${item.title}')" class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors" title="Bagikan">
+                                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="event.stopPropagation(); requestDelete(${item.id}, 'qrcodes')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-colors" title="Hapus">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                        
+                        setTimeout(() => drawQRWithLogo(thumbCanvasId, item.content, item.color || '#000000', item.logo), 50);
+                    });
+                    lucide.createIcons();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // --- 6B. HISTORY SCANNED (KOLEKSI PINDAI) ---
+        async function renderScanHistory() {
+            const list = document.getElementById('scan-history-list');
+            const emptyState = document.getElementById('scan-history-empty');
+            
+            list.innerHTML = '';
+            try {
+                let data = await getAllScannedData();
+                if(data.length === 0) {
+                    list.classList.add('hidden');
+                    emptyState.classList.remove('hidden');
+                } else {
+                    list.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+                    
+                    data.forEach(item => {
+                        const date = new Date(item.createdAt).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+                        const iconType = item.type === 'url' ? 'link' : (item.type === 'wifi' ? 'wifi' : 'file-text');
+                        const thumbCanvasId = `scan-thumb-${item.id}`;
+
+                        const card = document.createElement('div');
+                        card.className = "bg-white dark:bg-darkSurface p-4 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800/60 hover:shadow-soft transition-all flex items-center gap-4 animate-pop";
+                        
+                        card.innerHTML = `
+                            <div class="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 p-1 flex-shrink-0 cursor-pointer" onclick="openScannedDetail('${item.content}')" title="Ketuk untuk melihat hasil">
+                                <canvas id="${thumbCanvasId}" class="w-full h-full object-contain rounded-lg"></canvas>
+                            </div>
+                            <div class="flex-1 min-w-0 cursor-pointer" onclick="openScannedDetail('${item.content}')" title="Ketuk untuk menyalin/membuka link">
+                                <h4 class="font-bold text-slate-800 dark:text-white truncate text-sm">${item.content}</h4>
+                                <div class="flex items-center gap-2 text-[10px] text-slate-500 mt-1">
+                                    <i data-lucide="${iconType}" class="w-3 h-3"></i> 
+                                    <span>${item.type.toUpperCase()} &bull; ${date}</span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col sm:flex-row items-center gap-1 flex-shrink-0">
+                                <button onclick="quickShareQR('${thumbCanvasId}', 'QR Hasil Pindai')" class="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-500/10 rounded-full transition-colors" title="Bagikan QR">
+                                    <i data-lucide="share-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="requestDelete(${item.id}, 'scanned_qrs')" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-full transition-colors" title="Hapus Riwayat">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        `;
+                        list.appendChild(card);
+                        
+                        setTimeout(() => drawQRWithLogo(thumbCanvasId, item.content, '#000000', null), 50);
+                    });
+                    lucide.createIcons();
+                }
+            } catch(e) { console.error(e); }
+        }
+
+        // --- 7. EXPORT / SHARE LOGIC ---
+        const captureConfig = {
+            scale: 3, 
+            backgroundColor: '#ffffff',
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+            onclone: (documentClone) => {
+                const exportWrappers = documentClone.querySelectorAll('.group');
+                exportWrappers.forEach(el => {
+                    el.classList.remove('group');
+                    el.style.transform = 'none'; 
+                });
+                
+                const wrappers = documentClone.querySelectorAll('#qr-export-wrapper, #detail-export-wrapper');
+                wrappers.forEach(w => {
+                    w.style.height = 'max-content';
+                    w.style.overflow = 'visible';
+                });
+            }
+        };
+
+        async function downloadQR(wrapperId, titleId) {
+            const wrapper = document.getElementById(wrapperId);
+            const titleEl = document.getElementById(titleId);
+            try {
+                const canvas = await html2canvas(wrapper, captureConfig);
+                const link = document.createElement('a');
+                link.download = `${titleEl.textContent || 'QRMUAJA'}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast("Gambar berhasil diunduh!");
+            } catch(e) { showToast("Gagal mengunduh gambar.", "error"); }
+        }
+
+        async function shareQR(wrapperId, titleId) {
+            const wrapper = document.getElementById(wrapperId);
+            const titleEl = document.getElementById(titleId);
+            try {
+                const canvas = await html2canvas(wrapper, captureConfig);
+                canvas.toBlob(async (blob) => {
+                    const file = new File([blob], 'QRMUAJA_Share.png', { type: 'image/png' });
+                    if (navigator.share) await navigator.share({ title: 'Bagikan QR Code', text: titleEl.textContent, files: [file] });
+                    else showToast("Fitur share tidak didukung di browser ini.", "error");
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        // BAGIKAN CEPAT DARI LIST (Menggunakan Canvas Thumbnail di background)
+        async function quickShareQR(canvasId, title) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            try {
+                canvas.toBlob(async (blob) => {
+                    const file = new File([blob], 'QRMUAJA_Share.png', { type: 'image/png' });
+                    if (navigator.share) await navigator.share({ title: title, text: 'Bagikan QR Code', files: [file] });
+                    else showToast("Fitur share tidak didukung di browser ini.", "error");
+                });
+            } catch(e) { showToast("Gagal membagikan QR", "error"); }
+        }
+
+        // --- 8. DELETE MODAL ---
+        let deleteIdTarget = null;
+        let deleteStoreTarget = 'qrcodes'; // Default ke Koleksi Tersimpan
+        
+        function requestDelete(id, store = 'qrcodes') {
+            deleteIdTarget = id;
+            deleteStoreTarget = store;
+            const modal = document.getElementById('modal-delete');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        
+        function closeDeleteModal() {
+            deleteIdTarget = null;
+            const modal = document.getElementById('modal-delete');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
+            if(deleteIdTarget) {
+                try {
+                    if(deleteStoreTarget === 'qrcodes') {
+                        await deleteData(deleteIdTarget);
+                        renderHistory();
+                    } else {
+                        await deleteScannedData(deleteIdTarget);
+                        renderScanHistory();
+                    }
+                    showToast("Data berhasil dihapus");
+                    closeDeleteModal();
+                } catch(e) { showToast("Gagal menghapus", "error"); }
+            }
+        });
+
+        // --- 9. DETAIL MODAL (SWIPE TO CLOSE) ---
+        const detailModal = document.getElementById('modal-qr-detail');
+        const detailSheet = document.getElementById('detail-sheet');
+        const detailOverlay = document.getElementById('detail-overlay');
+        
+        function openDetailModal(item) {
+            detailModal.classList.remove('hidden');
+            detailModal.classList.add('flex');
+            
+            drawQRWithLogo('detail-qr-canvas', item.content, item.color || '#000000', item.logo);
+            document.getElementById('detail-title').textContent = item.title;
+            document.getElementById('detail-date').textContent = new Date(item.createdAt).toLocaleString('id-ID');
+            document.getElementById('detail-content').textContent = item.content;
+
+            setTimeout(() => {
+                detailOverlay.classList.remove('opacity-0');
+                detailSheet.classList.add('open');
+            }, 10);
+        }
+
+        function closeDetailModal() {
+            detailOverlay.classList.add('opacity-0');
+            detailSheet.classList.remove('open');
+            setTimeout(() => {
+                detailModal.classList.add('hidden');
+                detailModal.classList.remove('flex');
+            }, 300); 
+        }
+
+        let startY = 0, currentY = 0;
+        const dragHandle = document.getElementById('qr-drag-handle');
+        dragHandle.addEventListener('touchstart', (e) => { startY = e.touches[0].clientY; detailSheet.style.transition = 'none'; }, {passive: true});
+        dragHandle.addEventListener('touchmove', (e) => { currentY = e.touches[0].clientY; const diff = currentY - startY; if (diff > 0) detailSheet.style.transform = `translateY(${diff}px)`; }, {passive: true});
+        dragHandle.addEventListener('touchend', (e) => { detailSheet.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'; const diff = currentY - startY; if (diff > 100) closeDetailModal(); else detailSheet.style.transform = 'translateY(0)'; });
+
+        // --- 10. BACKUP / RESTORE ---
+        async function exportToExcel() {
+            try {
+                const data = await getAllData();
+                if(data.length === 0) return showToast("Tidak ada data untuk diexport", "error");
+                
+                const exportData = data.map(d => ({ ID: d.id, Judul: d.title, Tipe: d.type.toUpperCase(), Konten_Data: d.content, Tanggal_Dibuat: new Date(d.createdAt).toLocaleString('id-ID') }));
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Koleksi_QR");
+                XLSX.writeFile(wb, `${appName}_Backup.xlsx`);
+                showToast("Berhasil export ke Excel!");
+            } catch(e) { showToast("Gagal export", "error"); }
+        }
+
+        function importFromExcel(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    let imported = 0;
+                    for(let row of jsonData) {
+                        if(row.Konten_Data && row.Tipe) {
+                            await addData({ title: row.Judul || 'Imported QR', type: row.Tipe.toLowerCase(), content: row.Konten_Data });
+                            imported++;
+                        }
+                    }
+                    if(imported > 0) {
+                        showToast(`${imported} QR Code diimport!`);
+                        if(!document.getElementById('sec-history').classList.contains('hidden')) renderHistory();
+                    } else { showToast("Format file tidak sesuai", "error"); }
+                } catch(err) { showToast("Gagal memproses file", "error"); }
+                event.target.value = ''; 
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function confirmResetDB() {
+            if(confirm("PERINGATAN! Semua data QR Code akan dihapus secara permanen dan sistem akan kembali ke pengaturan awal. Lanjutkan?")) {
+                clearDB().then(() => {
+                    // Hapus localStorage termasuk tema dan warna
+                    localStorage.clear();
+                    
+                    // Kembalikan ke warna bawaan sebelum reload
+                    primaryColor = '#4F46E5';
+                    applyPrimaryColor(primaryColor);
+                    
+                    showToast("Sistem direset ke awal.");
+                    setTimeout(() => window.location.reload(), 1500);
+                }).catch(() => showToast("Gagal reset sistem.", "error"));
+            }
+        }
+
+        // --- 11. PWA REGISTRATION ---
+        function registerSW() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('sw.js').then(reg => console.log('SW Registered')).catch(err => console.log('SW Failed', err));
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
